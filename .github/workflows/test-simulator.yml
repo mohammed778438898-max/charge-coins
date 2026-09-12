@@ -1,0 +1,42 @@
+name: Test local simulator
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start server in background and wait
+        run: |
+          npm start &
+          # wait for server to become responsive (up to ~15s)
+          for i in {1..15}; do
+            if curl -sSf http://localhost:3000/ >/dev/null 2>&1; then
+              echo "server up"
+              break
+            fi
+            echo "waiting... ($i)"
+            sleep 1
+          done
+
+      - name: Send test transaction
+        run: |
+          echo "Sending POST /send"
+          curl -v -X POST http://localhost:3000/send -H "Content-Type: application/json" -d '{"to":"TBruaQpFKt9xccnWLas8VxqhDTpvR8dVJZ","amount":100}' || true
+
+      - name: Fetch transactions
+        run: |
+          echo "GET /txs"
+          curl -sS http://localhost:3000/txs || true
